@@ -12,7 +12,7 @@ TARGET_PROFILE ?= Generic
 
 # 构建配置
 BUILD_DIR ?= openwrt
-CONFIG_FILE ?= config
+CONFIG_FILE ?= config-k3s
 JOBS ?= $(shell nproc)
 
 # 下载源
@@ -49,8 +49,11 @@ help:
 	@echo "  JOBS             - 并行编译任务数 (默认: $(JOBS))"
 	@echo ""
 	@echo "示例:"
-	@echo "  make OPENWRT_VERSION=21.02.3 download"
+	@echo "  make download"
+	@echo "  make build"
+	@echo "  make OPENWRT_VERSION=23.05.2 download"
 	@echo "  make JOBS=8 build"
+	@echo "  make CONFIG_FILE=config-custom build"
 
 info:
 	@echo "$(COLOR_BLUE)当前配置:$(COLOR_RESET)"

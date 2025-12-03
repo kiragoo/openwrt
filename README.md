@@ -8,7 +8,7 @@
 
 ```bash
 # 使用默认配置编译 x86_64 版本
-make CONFIG_FILE=config-k3s build
+make build
 
 # 查看编译产物
 make show-images
@@ -17,10 +17,10 @@ make show-images
 **编译其他架构：**
 ```bash
 # ARM 64位
-make TARGET_ARCH=armvirt TARGET_SUBARCH=64 CONFIG_FILE=config-k3s build
+make TARGET_ARCH=armvirt TARGET_SUBARCH=64 build
 
 # 树莓派 4
-make TARGET_ARCH=bcm27xx TARGET_SUBARCH=bcm2711 CONFIG_FILE=config-k3s build
+make TARGET_ARCH=bcm27xx TARGET_SUBARCH=bcm2711 build
 ```
 
 ## 系统要求
@@ -252,7 +252,7 @@ CONFIG_TARGET_ROOTFS_PARTSIZE=2048         # 根文件系统分区大小：2GB
 | `TARGET_ARCH` | x86 | 目标架构（x86, armvirt, bcm27xx 等） |
 | `TARGET_SUBARCH` | 64 | 子架构（64, generic, bcm2711 等） |
 | `TARGET_PROFILE` | Generic | 目标配置文件 |
-| `CONFIG_FILE` | config | 配置文件名（默认使用 config-k3s） |
+| `CONFIG_FILE` | config-k3s | 配置文件名 |
 | `JOBS` | $(nproc) | 并行编译任务数 |
 
 ### 常用命令
@@ -265,19 +265,22 @@ make help
 make info
 
 # 使用默认配置编译（x86_64）
-make CONFIG_FILE=config-k3s build
+make build
 
 # 编译 ARM 64位版本
-make TARGET_ARCH=armvirt TARGET_SUBARCH=64 CONFIG_FILE=config-k3s build
+make TARGET_ARCH=armvirt TARGET_SUBARCH=64 build
 
 # 编译树莓派 4 版本
-make TARGET_ARCH=bcm27xx TARGET_SUBARCH=bcm2711 CONFIG_FILE=config-k3s build
+make TARGET_ARCH=bcm27xx TARGET_SUBARCH=bcm2711 build
 
 # 下载指定版本的 OpenWrt
 make OPENWRT_VERSION=23.05.2 download
 
 # 指定并行任务数
 make JOBS=8 build
+
+# 使用自定义配置文件
+make CONFIG_FILE=my-config build
 
 # 打开配置菜单（高级用户）
 make menuconfig
@@ -429,30 +432,32 @@ config-k3s 配置文件专注于 K3s 所需的内核特性和软件包，不包�
 
 **x86_64（默认）：**
 ```bash
-make TARGET_ARCH=x86 TARGET_SUBARCH=64 CONFIG_FILE=config-k3s build
+make build
+# 或明确指定
+make TARGET_ARCH=x86 TARGET_SUBARCH=64 build
 ```
 
 **ARM 64位虚拟化平台：**
 ```bash
-make TARGET_ARCH=armvirt TARGET_SUBARCH=64 CONFIG_FILE=config-k3s build
+make TARGET_ARCH=armvirt TARGET_SUBARCH=64 build
 ```
 
 **树莓派系列：**
 ```bash
 # 树莓派 4/400/CM4
-make TARGET_ARCH=bcm27xx TARGET_SUBARCH=bcm2711 CONFIG_FILE=config-k3s build
+make TARGET_ARCH=bcm27xx TARGET_SUBARCH=bcm2711 build
 
 # 树莓派 3
-make TARGET_ARCH=bcm27xx TARGET_SUBARCH=bcm2710 CONFIG_FILE=config-k3s build
+make TARGET_ARCH=bcm27xx TARGET_SUBARCH=bcm2710 build
 ```
 
 **其他 ARM 设备：**
 ```bash
 # Rockchip (如 NanoPi R4S)
-make TARGET_ARCH=rockchip TARGET_SUBARCH=armv8 CONFIG_FILE=config-k3s build
+make TARGET_ARCH=rockchip TARGET_SUBARCH=armv8 build
 
 # MediaTek (如 GL.iNet)
-make TARGET_ARCH=mediatek TARGET_SUBARCH=mt7622 CONFIG_FILE=config-k3s build
+make TARGET_ARCH=mediatek TARGET_SUBARCH=mt7622 build
 ```
 
 ### 查找可用架构

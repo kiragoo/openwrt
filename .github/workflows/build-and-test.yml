@@ -56,7 +56,7 @@ jobs:
       - name: Build OpenWrt
         run: |
           echo "开始编译 OpenWrt..."
-          make CONFIG_FILE=${{ env.CONFIG_FILE }} JOBS=$(nproc) build
+          make JOBS=$(nproc) build
           df -h
 
       - name: Check build artifacts
