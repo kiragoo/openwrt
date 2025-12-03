@@ -518,7 +518,7 @@ make build
 
 ### 工作流程
 
-每次推送代码到主分支时，会自动执行以下步骤：
+每次推送代码到 `main` 或 `dev` 分支时，会自动执行以下步骤：
 
 1. **构建 OpenWrt 镜像**
    - 下载 OpenWrt 源码
@@ -528,27 +528,24 @@ make build
 2. **虚拟机测试**
    - 使用 QEMU 启动 OpenWrt 虚拟机
    - 验证内核特性（Cgroups、Namespaces、OverlayFS 等）
-   - 配置网络和系统
 
-3. **K3s 集群部署**
+3. **K3s 集群验证**
    - 安装 K3s 和 Containerd
    - 验证集群节点状态
    - 检查系统 Pods 运行状态
+   - 测试部署功能（Nginx）
 
-4. **功能测试**
-   - 创建测试部署（Nginx）
-   - 验证容器运行时
-   - 清理测试资源
-
-5. **产物上传**
+4. **产物上传**
    - 上传构建的 OpenWrt 镜像（保留 30 天）
    - 上传测试日志（保留 7 天）
 
 ### 查看构建结果
 
 - 访问 GitHub Actions 页面查看构建状态
-- 下载构建产物中的 OpenWrt 镜像
-- 查看详细的测试日志
+- 在 Artifacts 中下载：
+  - `openwrt-k3s-x86-64` - 可用的 OpenWrt 镜像
+  - `test-logs` - 详细的测试日志
+- 查看 Summary 了解测试结果概览
 
 ### 本地复现 CI 测试
 

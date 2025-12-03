@@ -16,7 +16,7 @@ jobs:
   build-and-test:
     runs-on: ubuntu-22.04
     timeout-minutes: 180
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -100,415 +100,101 @@ jobs:
             -netdev user,id=net0,hostfwd=tcp::2222-:22,hostfwd=tcp::8080-:80 \
             -device virtio-net-pci,netdev=net0 \
             -nographic \
-            -serial mon:stdio \
-            > vm.log 2>&1 &
+            -daemonize
           
-          VM_PID=$!
-          echo "VM_PID=$VM_PID" >> $GITHUB_ENV
-          echo "虚拟机 PID: $VM_PID"
-          
-          # 等待虚拟机启动
-          echo "等待虚拟机启动..."
-          sleep 60
-          
-          # 检查虚拟机是否运行
-          if ! ps -p $VM_PID > /dev/null; then
-            echo "错误: 虚拟机启动失败"
-            cat vm.log
-            exit 1
-          fi
-          
-          echo "虚拟机已启动"
+          echo "虚拟机已在后台启动"
 
       - name: Configure OpenWrt
         run: |
-          echo "配置 OpenWrt..."
-          
-          # 创建配置脚本
-          cat > configure.exp << 'EOF'
-#!/usr/bin/expect -f
-set timeout 30
-
-# 连接到虚拟机串口（通过 QEMU monitor）
-spawn telnet localhost 2222
-
-expect {
-    "login:" {
-        send "root\r"
-        exp_continue
-    }
-    "assword:" {
-        send "\r"
-        exp_continue
-    }
-    "root@OpenWrt" {
-        # 设置 root 密码
-        send "passwd\r"
-        expect "New password:"
-        send "openwrt123\r"
-        expect "Retype password:"
-        send "openwrt123\r"
-        
-        # 配置网络
-        expect "root@OpenWrt"
-        send "uci set network.lan.ipaddr='192.168.1.1'\r"
-        expect "root@OpenWrt"
-        send "uci commit network\r"
-        expect "root@OpenWrt"
-        send "/etc/init.d/network restart\r"
-        
-        # 等待网络重启
-        sleep 5
-        
-        expect "root@OpenWrt"
-        send "exit\r"
-    }
-    timeout {
-        puts "连接超时"
-        exit 1
-    }
-}
-
-expect eof
-EOF
-          
-          chmod +x configure.exp
-          ./configure.exp || echo "配置脚本执行完成"
-          
-          sleep 10
+          chmod +x .github/scripts/*.sh
+          .github/scripts/configure-openwrt.sh
 
       - name: Verify kernel features
         run: |
-          echo "验证内核特性..."
-          
-          cat > verify.exp << 'EOF'
-#!/usr/bin/expect -f
-set timeout 30
-
-spawn telnet localhost 2222
-
-expect "login:"
-send "root\r"
-expect "assword:"
-send "openwrt123\r"
-
-expect "root@OpenWrt"
-send "echo '=== 检查 Cgroups ==='\r"
-expect "root@OpenWrt"
-send "mount | grep cgroup\r"
-
-expect "root@OpenWrt"
-send "echo '=== 检查 Namespaces ==='\r"
-expect "root@OpenWrt"
-send "ls -la /proc/self/ns/\r"
-
-expect "root@OpenWrt"
-send "echo '=== 检查网络模块 ==='\r"
-expect "root@OpenWrt"
-send "lsmod | grep -E 'veth|vxlan|br_netfilter'\r"
-
-expect "root@OpenWrt"
-send "echo '=== 检查 OverlayFS ==='\r"
-expect "root@OpenWrt"
-send "cat /proc/filesystems | grep overlay\r"
-
-expect "root@OpenWrt"
-send "echo '=== 系统信息 ==='\r"
-expect "root@OpenWrt"
-send "uname -a\r"
-
-expect "root@OpenWrt"
-send "free -m\r"
-
-expect "root@OpenWrt"
-send "df -h\r"
-
-expect "root@OpenWrt"
-send "exit\r"
-
-expect eof
-EOF
-          
-          chmod +x verify.exp
-          ./verify.exp | tee verify.log
-          
-          # 检查关键特性
-          if ! grep -q "cgroup" verify.log; then
-            echo "警告: Cgroups 可能未正确配置"
-          fi
-          
-          if ! grep -q "overlay" verify.log; then
-            echo "警告: OverlayFS 可能未启用"
-          fi
+          .github/scripts/verify-kernel.sh | tee verify-kernel.log
 
       - name: Install K3s
         run: |
-          echo "安装 K3s..."
-          
-          cat > install-k3s.exp << 'EOF'
-#!/usr/bin/expect -f
-set timeout 300
-
-spawn telnet localhost 2222
-
-expect "login:"
-send "root\r"
-expect "assword:"
-send "openwrt123\r"
-
-expect "root@OpenWrt"
-send "echo '=== 更新软件包列表 ==='\r"
-expect "root@OpenWrt"
-send "opkg update\r"
-
-expect "root@OpenWrt"
-send "echo '=== 安装依赖 ==='\r"
-expect "root@OpenWrt"
-send "opkg install ca-certificates curl\r"
-
-expect "root@OpenWrt"
-send "echo '=== 下载 K3s 安装脚本 ==='\r"
-expect "root@OpenWrt"
-send "curl -sfL https://get.k3s.io -o /tmp/install-k3s.sh\r"
-
-expect "root@OpenWrt"
-send "chmod +x /tmp/install-k3s.sh\r"
-
-expect "root@OpenWrt"
-send "echo '=== 安装 K3s ==='\r"
-expect "root@OpenWrt"
-send "INSTALL_K3S_EXEC='--container-runtime-endpoint unix:///run/containerd/containerd.sock' sh /tmp/install-k3s.sh\r"
-
-# 等待安装完成
-expect {
-    "systemctl" {
-        exp_continue
-    }
-    "root@OpenWrt" {
-        send "\r"
-    }
-    timeout {
-        puts "K3s 安装超时"
-    }
-}
-
-expect "root@OpenWrt"
-send "exit\r"
-
-expect eof
-EOF
-          
-          chmod +x install-k3s.exp
-          ./install-k3s.exp | tee install-k3s.log
-          
-          # 等待 K3s 启动
-          sleep 30
+          .github/scripts/install-k3s.sh | tee install-k3s.log
 
       - name: Verify K3s cluster
         run: |
-          echo "验证 K3s 集群..."
-          
-          cat > verify-k3s.exp << 'EOF'
-#!/usr/bin/expect -f
-set timeout 60
-
-spawn telnet localhost 2222
-
-expect "login:"
-send "root\r"
-expect "assword:"
-send "openwrt123\r"
-
-expect "root@OpenWrt"
-send "echo '=== K3s 版本 ==='\r"
-expect "root@OpenWrt"
-send "k3s --version\r"
-
-expect "root@OpenWrt"
-send "echo '=== K3s 服务状态 ==='\r"
-expect "root@OpenWrt"
-send "/etc/init.d/k3s status\r"
-
-expect "root@OpenWrt"
-send "echo '=== 等待节点就绪 ==='\r"
-expect "root@OpenWrt"
-send "for i in \$(seq 1 30); do k3s kubectl get nodes && break || sleep 5; done\r"
-
-expect "root@OpenWrt"
-send "echo '=== 节点详细信息 ==='\r"
-expect "root@OpenWrt"
-send "k3s kubectl get nodes -o wide\r"
-
-expect "root@OpenWrt"
-send "echo '=== 系统 Pods ==='\r"
-expect "root@OpenWrt"
-send "k3s kubectl get pods -A\r"
-
-expect "root@OpenWrt"
-send "echo '=== Containerd 状态 ==='\r"
-expect "root@OpenWrt"
-send "k3s crictl version\r"
-
-expect "root@OpenWrt"
-send "echo '=== 容器运行时信息 ==='\r"
-expect "root@OpenWrt"
-send "k3s crictl info\r"
-
-expect "root@OpenWrt"
-send "echo '=== K3s 日志（最后 50 行）==='\r"
-expect "root@OpenWrt"
-send "logread | grep k3s | tail -50\r"
-
-expect "root@OpenWrt"
-send "exit\r"
-
-expect eof
-EOF
-          
-          chmod +x verify-k3s.exp
-          ./verify-k3s.exp | tee verify-k3s.log
-          
-          # 检查关键指标
-          if grep -q "Ready" verify-k3s.log; then
-            echo "✅ K3s 节点状态: Ready"
-          else
-            echo "❌ K3s 节点未就绪"
-            exit 1
-          fi
-          
-          if grep -q "Running" verify-k3s.log; then
-            echo "✅ 系统 Pods 正在运行"
-          else
-            echo "⚠️  警告: 部分 Pods 可能未运行"
-          fi
+          .github/scripts/verify-k3s.sh | tee verify-k3s.log
 
       - name: Test K3s deployment
         run: |
-          echo "测试 K3s 部署..."
-          
-          cat > test-deployment.exp << 'EOF'
-#!/usr/bin/expect -f
-set timeout 120
-
-spawn telnet localhost 2222
-
-expect "login:"
-send "root\r"
-expect "assword:"
-send "openwrt123\r"
-
-expect "root@OpenWrt"
-send "echo '=== 创建测试部署 ==='\r"
-expect "root@OpenWrt"
-send "k3s kubectl create deployment nginx --image=nginx:alpine\r"
-
-expect "root@OpenWrt"
-send "echo '=== 等待部署就绪 ==='\r"
-expect "root@OpenWrt"
-send "k3s kubectl wait --for=condition=available --timeout=120s deployment/nginx\r"
-
-expect "root@OpenWrt"
-send "echo '=== 查看部署状态 ==='\r"
-expect "root@OpenWrt"
-send "k3s kubectl get deployment nginx\r"
-
-expect "root@OpenWrt"
-send "echo '=== 查看 Pod 状态 ==='\r"
-expect "root@OpenWrt"
-send "k3s kubectl get pods -l app=nginx\r"
-
-expect "root@OpenWrt"
-send "echo '=== 查看容器列表 ==='\r"
-expect "root@OpenWrt"
-send "k3s crictl ps\r"
-
-expect "root@OpenWrt"
-send "echo '=== 清理测试部署 ==='\r"
-expect "root@OpenWrt"
-send "k3s kubectl delete deployment nginx\r"
-
-expect "root@OpenWrt"
-send "exit\r"
-
-expect eof
-EOF
-          
-          chmod +x test-deployment.exp
-          ./test-deployment.exp | tee test-deployment.log
-          
-          if grep -q "deployment.apps/nginx created" test-deployment.log; then
-            echo "✅ 测试部署创建成功"
-          else
-            echo "❌ 测试部署创建失败"
-            exit 1
-          fi
+          .github/scripts/test-deployment.sh | tee test-deployment.log
 
       - name: Collect logs
         if: always()
         run: |
           echo "收集日志..."
           
-          # 收集虚拟机日志
-          if [ -f vm.log ]; then
-            echo "=== 虚拟机启动日志 ===" > all-logs.txt
-            cat vm.log >> all-logs.txt
-          fi
+          SSH_CMD="ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 2222 root@localhost"
           
-          # 收集验证日志
-          for log in verify.log install-k3s.log verify-k3s.log test-deployment.log; do
+          # 创建日志汇总
+          echo "=== OpenWrt 系统日志 ===" > all-logs.txt
+          $SSH_CMD "logread" >> all-logs.txt 2>&1 || echo "无法获取系统日志" >> all-logs.txt
+          
+          echo "" >> all-logs.txt
+          echo "=== dmesg 日志 ===" >> all-logs.txt
+          $SSH_CMD "dmesg | tail -100" >> all-logs.txt 2>&1 || echo "无法获取 dmesg" >> all-logs.txt
+          
+          # 合并测试日志
+          for log in verify-kernel.log install-k3s.log verify-k3s.log test-deployment.log; do
             if [ -f "$log" ]; then
               echo "" >> all-logs.txt
               echo "=== $log ===" >> all-logs.txt
               cat "$log" >> all-logs.txt
             fi
           done
-          
-          # 尝试从虚拟机获取系统日志
-          cat > collect-logs.exp << 'EOF'
-#!/usr/bin/expect -f
-set timeout 30
-
-spawn telnet localhost 2222
-
-expect {
-    "login:" {
-        send "root\r"
-        expect "assword:"
-        send "openwrt123\r"
-        
-        expect "root@OpenWrt"
-        send "dmesg | tail -100\r"
-        
-        expect "root@OpenWrt"
-        send "logread | tail -100\r"
-        
-        expect "root@OpenWrt"
-        send "exit\r"
-    }
-    timeout {
-        puts "无法连接到虚拟机"
-    }
-}
-
-expect eof
-EOF
-          
-          chmod +x collect-logs.exp
-          ./collect-logs.exp >> all-logs.txt 2>&1 || true
 
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-and-test-logs
+          name: test-logs
           path: |
             all-logs.txt
-            verify.log
+            verify-kernel.log
             install-k3s.log
             verify-k3s.log
             test-deployment.log
-            vm.log
           retention-days: 7
+
+      - name: Cleanup VM
+        if: always()
+        run: |
+          echo "清理虚拟机..."
+          sudo pkill -f qemu-system-x86_64 || true
+          rm -f openwrt.img openwrt.qcow2
+          echo "清理完成"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 构建和测试总结" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ **状态**: 成功" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ OpenWrt 镜像构建成功" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ 内核特性验证通过" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ K3s 安装成功" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ K3s 集群验证通过" >> $GITHUB_STEP_SUMMARY
+            echo "- ✅ 部署测试成功" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **状态**: 失败" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "请查看日志了解详细信息" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 配置信息" >> $GITHUB_STEP_SUMMARY
+          echo "- OpenWrt 版本: ${{ env.OPENWRT_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- 目标架构: ${{ env.TARGET_ARCH }}/${{ env.TARGET_SUBARCH }}" >> $GITHUB_STEP_SUMMARY
+          echo "- 配置文件: ${{ env.CONFIG_FILE }}" >> $GITHUB_STEP_SUMMARY
 
       - name: Upload OpenWrt image
         if: success()
@@ -517,46 +203,3 @@ EOF
           name: openwrt-k3s-x86-64
           path: ${{ env.IMAGE_FILE }}
           retention-days: 30
-
-      - name: Cleanup
-        if: always()
-        run: |
-          echo "清理资源..."
-          
-          # 停止虚拟机
-          if [ ! -z "${{ env.VM_PID }}" ]; then
-            sudo kill ${{ env.VM_PID }} 2>/dev/null || true
-            sleep 5
-            sudo kill -9 ${{ env.VM_PID }} 2>/dev/null || true
-          fi
-          
-          # 清理临时文件
-          rm -f openwrt.img openwrt.qcow2
-          rm -f *.exp *.log
-          
-          echo "清理完成"
-
-      - name: Summary
-        if: always()
-        run: |
-          echo "## 构建和测试总结" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ **状态**: 成功" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "- OpenWrt 镜像构建成功" >> $GITHUB_STEP_SUMMARY
-            echo "- K3s 集群启动正常" >> $GITHUB_STEP_SUMMARY
-            echo "- Containerd 运行时验证通过" >> $GITHUB_STEP_SUMMARY
-            echo "- 测试部署执行成功" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "❌ **状态**: 失败" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "请查看日志了解详细信息" >> $GITHUB_STEP_SUMMARY
-          fi
-          
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 配置信息" >> $GITHUB_STEP_SUMMARY
-          echo "- OpenWrt 版本: ${{ env.OPENWRT_VERSION }}" >> $GITHUB_STEP_SUMMARY
-          echo "- 目标架构: ${{ env.TARGET_ARCH }}/${{ env.TARGET_SUBARCH }}" >> $GITHUB_STEP_SUMMARY
-          echo "- 配置文件: ${{ env.CONFIG_FILE }}" >> $GITHUB_STEP_SUMMARY
