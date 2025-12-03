@@ -82,20 +82,21 @@ jobs:
           
           cd openwrt
           echo "运行 defconfig..."
-          make defconfig V=s || {
+          # 清除可能干扰 OpenWrt 构建系统的环境变量
+          env -u TARGET_ARCH -u TARGET_SUBARCH make defconfig V=s || {
             echo "defconfig 失败，尝试单线程模式..."
-            make -j1 defconfig V=sc
+            env -u TARGET_ARCH -u TARGET_SUBARCH make -j1 defconfig V=sc
           }
 
       - name: Download packages
         run: |
           echo "下载软件包..."
-          cd openwrt && make download -j$(nproc) V=s
+          cd openwrt && env -u TARGET_ARCH -u TARGET_SUBARCH make download -j$(nproc) V=s
 
       - name: Build OpenWrt
         run: |
           echo "开始编译 OpenWrt..."
-          cd openwrt && make -j$(nproc) V=s
+          cd openwrt && env -u TARGET_ARCH -u TARGET_SUBARCH make -j$(nproc) V=s
           df -h
 
       - name: Check build artifacts
