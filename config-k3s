@@ -1,0 +1,108 @@
+# OpenWrt Configuration for K3s 1.30.11 and Containerd
+# This is a minimal configuration containing only the essential kernel dependencies
+#
+# Note: Target platform (x86/64, ARM, etc.) is configured via Makefile variables:
+#   TARGET_ARCH, TARGET_SUBARCH, TARGET_PROFILE
+# This config file focuses on kernel features and packages needed for K3s/Containerd
+
+# Essential Feeds
+CONFIG_FEED_packages=y
+
+# Kernel Features - Cgroups (Control Groups)
+CONFIG_KERNEL_CGROUPS=y
+CONFIG_KERNEL_BLK_CGROUP=y
+CONFIG_KERNEL_CGROUP_CPUACCT=y
+CONFIG_KERNEL_CGROUP_DEVICE=y
+CONFIG_KERNEL_CGROUP_FREEZER=y
+CONFIG_KERNEL_CGROUP_PIDS=y
+CONFIG_KERNEL_CGROUP_SCHED=y
+CONFIG_KERNEL_CFS_BANDWIDTH=y
+CONFIG_KERNEL_CPUSETS=y
+CONFIG_KERNEL_FAIR_GROUP_SCHED=y
+CONFIG_KERNEL_MEMCG=y
+CONFIG_KERNEL_MM_OWNER=y
+CONFIG_KERNEL_NETPRIO_CGROUP=y
+CONFIG_KERNEL_NET_CLS_CGROUP=y
+
+# Kernel Features - Namespaces
+CONFIG_KERNEL_NAMESPACES=y
+CONFIG_KERNEL_IPC_NS=y
+CONFIG_KERNEL_NET_NS=y
+CONFIG_KERNEL_PID_NS=y
+CONFIG_KERNEL_USER_NS=y
+CONFIG_KERNEL_UTS_NS=y
+
+# Kernel Features - Security and Misc
+CONFIG_KERNEL_SECCOMP=y
+CONFIG_KERNEL_SECCOMP_FILTER=y
+CONFIG_KERNEL_KEYS=y
+CONFIG_KERNEL_POSIX_MQUEUE=y
+CONFIG_KERNEL_DEVPTS_MULTIPLE_INSTANCES=y
+CONFIG_KERNEL_FREEZER=y
+CONFIG_KERNEL_LXC_MISC=y
+CONFIG_KERNEL_PROC_PID_CPUSET=y
+CONFIG_KERNEL_RESOURCE_COUNTERS=y
+
+# Network Tools
+CONFIG_PACKAGE_ip-bridge=y
+CONFIG_PACKAGE_ip-full=y
+CONFIG_PACKAGE_ipset=y
+
+# iptables Modules
+CONFIG_IPTABLES_CONNLABEL=y
+CONFIG_IPTABLES_NFTABLES=y
+CONFIG_PACKAGE_iptables-mod-conntrack-extra=y
+CONFIG_PACKAGE_iptables-mod-extra=y
+CONFIG_PACKAGE_iptables-mod-ipopt=y
+
+# Kernel Modules - Network
+CONFIG_PACKAGE_kmod-br-netfilter=y
+CONFIG_PACKAGE_kmod-veth=y
+CONFIG_PACKAGE_kmod-vxlan=y
+CONFIG_PACKAGE_kmod-dummy=y
+CONFIG_PACKAGE_kmod-tun=y
+CONFIG_PACKAGE_kmod-iptunnel=y
+CONFIG_PACKAGE_kmod-udptunnel4=y
+CONFIG_PACKAGE_kmod-udptunnel6=y
+
+# Kernel Modules - Netfilter
+CONFIG_PACKAGE_kmod-ipt-conntrack=y
+CONFIG_PACKAGE_kmod-ipt-conntrack-extra=y
+CONFIG_PACKAGE_kmod-ipt-extra=y
+CONFIG_PACKAGE_kmod-ipt-ipopt=y
+CONFIG_PACKAGE_kmod-ipt-ipset=y
+CONFIG_PACKAGE_kmod-ipt-raw=y
+CONFIG_PACKAGE_kmod-ipt-nat=y
+CONFIG_PACKAGE_kmod-ipt-nat6=y
+CONFIG_PACKAGE_kmod-nf-conntrack-netlink=y
+CONFIG_PACKAGE_kmod-nf-ipvs=y
+CONFIG_PACKAGE_kmod-nf-nat=y
+CONFIG_PACKAGE_kmod-nf-nat6=y
+CONFIG_PACKAGE_kmod-nfnetlink=y
+
+# Kernel Modules - Filesystem
+CONFIG_PACKAGE_kmod-fs-overlay=y
+CONFIG_PACKAGE_kmod-fuse=y
+CONFIG_PACKAGE_block-mount=y
+
+# Kernel Modules - Crypto (for container image verification)
+CONFIG_PACKAGE_kmod-crypto-hash=y
+CONFIG_PACKAGE_kmod-crypto-manager=y
+CONFIG_PACKAGE_kmod-crypto-sha1=y
+CONFIG_PACKAGE_kmod-crypto-sha256=y
+CONFIG_PACKAGE_kmod-crypto-crc32c=y
+
+# Libraries
+CONFIG_PACKAGE_libipset=y
+CONFIG_PACKAGE_libmnl=y
+CONFIG_PACKAGE_libnetfilter-conntrack=y
+CONFIG_PACKAGE_libnfnetlink=y
+CONFIG_PACKAGE_libnftnl=y
+CONFIG_PACKAGE_kmod-lib-crc32c=y
+
+# Storage Configuration
+CONFIG_TARGET_ROOTFS_PARTSIZE=2048
+
+# Disable unnecessary packages
+# CONFIG_PACKAGE_kmod-ppp is not set
+# CONFIG_PACKAGE_ppp is not set
