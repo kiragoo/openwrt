@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - dev
 
 env:
   OPENWRT_VERSION: 24.10.0

@@ -84,28 +84,54 @@ config: feeds
 		exit 1; \
 	fi
 	cp $(CONFIG_FILE) $(BUILD_DIR)/.config
-	cd $(BUILD_DIR) && make defconfig
+	@echo "$(COLOR_GREEN)编译配置工具并设置目标架构: $(TARGET_ARCH)/$(TARGET_SUBARCH)$(COLOR_RESET)"
+	@cd $(BUILD_DIR) && FORCE_UNSAFE_CONFIGURE=1 make defconfig 2>/dev/null || true
+	@cd $(BUILD_DIR) && \
+		sed -i '/^CONFIG_TARGET_/d' .config && \
+		if [ "$(TARGET_ARCH)" = "x86" ]; then \
+			echo "CONFIG_TARGET_x86=y" >> .config; \
+			echo "CONFIG_TARGET_x86_$(TARGET_SUBARCH)=y" >> .config; \
+			echo "CONFIG_TARGET_BOARD=\"x86\"" >> .config; \
+			echo "CONFIG_TARGET_SUBTARGET=\"$(TARGET_SUBARCH)\"" >> .config; \
+			echo "CONFIG_TARGET_PROFILE=\"Generic\"" >> .config; \
+			echo "CONFIG_TARGET_ROOTFS_EXT4FS=y" >> .config; \
+			echo "CONFIG_GRUB_IMAGES=y" >> .config; \
+			echo "CONFIG_TARGET_IMAGES_GZIP=y" >> .config; \
+		elif [ "$(TARGET_ARCH)" = "armvirt" ]; then \
+			echo "CONFIG_TARGET_armvirt=y" >> .config; \
+			echo "CONFIG_TARGET_armvirt_$(TARGET_SUBARCH)=y" >> .config; \
+			echo "CONFIG_TARGET_BOARD=\"armvirt\"" >> .config; \
+			echo "CONFIG_TARGET_SUBTARGET=\"$(TARGET_SUBARCH)\"" >> .config; \
+			echo "CONFIG_TARGET_PROFILE=\"Generic\"" >> .config; \
+		elif [ "$(TARGET_ARCH)" = "bcm27xx" ]; then \
+			echo "CONFIG_TARGET_bcm27xx=y" >> .config; \
+			echo "CONFIG_TARGET_bcm27xx_$(TARGET_SUBARCH)=y" >> .config; \
+			echo "CONFIG_TARGET_BOARD=\"bcm27xx\"" >> .config; \
+			echo "CONFIG_TARGET_SUBTARGET=\"$(TARGET_SUBARCH)\"" >> .config; \
+			echo "CONFIG_TARGET_PROFILE=\"Generic\"" >> .config; \
+		fi
+	@cd $(BUILD_DIR) && FORCE_UNSAFE_CONFIGURE=1 make defconfig
 
 menuconfig: feeds
 	@echo "$(COLOR_GREEN)打开配置菜单...$(COLOR_RESET)"
-	cd $(BUILD_DIR) && make menuconfig
+	cd $(BUILD_DIR) && FORCE_UNSAFE_CONFIGURE=1 make menuconfig
 	@echo "$(COLOR_YELLOW)保存配置到 $(CONFIG_FILE)...$(COLOR_RESET)"
 	cp $(BUILD_DIR)/.config $(CONFIG_FILE)
 
 build: config
 	@echo "$(COLOR_GREEN)开始编译 OpenWrt (使用 $(JOBS) 个并行任务)...$(COLOR_RESET)"
-	cd $(BUILD_DIR) && make -j$(JOBS) V=s
+	cd $(BUILD_DIR) && FORCE_UNSAFE_CONFIGURE=1 make -j$(JOBS) V=s
 
 clean:
 	@echo "$(COLOR_YELLOW)清理构建文件...$(COLOR_RESET)"
 	@if [ -d "$(BUILD_DIR)" ]; then \
-		cd $(BUILD_DIR) && make clean; \
+		cd $(BUILD_DIR) && FORCE_UNSAFE_CONFIGURE=1 make clean; \
 	fi
 
 distclean:
 	@echo "$(COLOR_YELLOW)完全清理...$(COLOR_RESET)"
 	@if [ -d "$(BUILD_DIR)" ]; then \
-		cd $(BUILD_DIR) && make distclean; \
+		cd $(BUILD_DIR) && FORCE_UNSAFE_CONFIGURE=1 make distclean; \
 	fi
 	rm -rf $(BUILD_DIR)
 
@@ -116,7 +142,15 @@ rebuild: clean build
 show-images:
 	@echo "$(COLOR_BLUE)编译产物位置:$(COLOR_RESET)"
 	@if [ -d "$(BUILD_DIR)/bin/targets" ]; then \
-		find $(BUILD_DIR)/bin/targets -name "*.img.gz" -o -name "*.bin"; \
+		if [ "$(TARGET_ARCH)" = "x86" ]; then \
+			echo "$(COLOR_GREEN)IMG 镜像文件:$(COLOR_RESET)"; \
+			find $(BUILD_DIR)/bin/targets -name "*.img.gz" -o -name "*.img" | grep -E "(combined|rootfs)" | sort; \
+			echo ""; \
+			echo "$(COLOR_YELLOW)其他文件:$(COLOR_RESET)"; \
+			find $(BUILD_DIR)/bin/targets -name "*.bin" -o -name "*.vmdk" -o -name "*.vdi" | sort; \
+		else \
+			find $(BUILD_DIR)/bin/targets -name "*.img.gz" -o -name "*.bin"; \
+		fi \
 	else \
 		echo "$(COLOR_YELLOW)未找到编译产物$(COLOR_RESET)"; \
 	fi
