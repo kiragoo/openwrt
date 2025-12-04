@@ -97,6 +97,9 @@ config: feeds
 			echo "CONFIG_TARGET_ROOTFS_EXT4FS=y" >> .config; \
 			echo "CONFIG_GRUB_IMAGES=y" >> .config; \
 			echo "CONFIG_TARGET_IMAGES_GZIP=y" >> .config; \
+			echo "CONFIG_PACKAGE_kmod-vmxnet3=y" >> .config; \
+			echo "CONFIG_PACKAGE_kmod-e1000=y" >> .config; \
+			echo "CONFIG_PACKAGE_kmod-e1000e=y" >> .config; \
 		elif [ "$(TARGET_ARCH)" = "armvirt" ]; then \
 			echo "CONFIG_TARGET_armvirt=y" >> .config; \
 			echo "CONFIG_TARGET_armvirt_$(TARGET_SUBARCH)=y" >> .config; \
