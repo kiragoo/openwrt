@@ -88,6 +88,7 @@ config: feeds
 	@cd $(BUILD_DIR) && FORCE_UNSAFE_CONFIGURE=1 make defconfig 2>/dev/null || true
 	@cd $(BUILD_DIR) && \
 		sed -i '/^CONFIG_TARGET_/d' .config && \
+		sed -i '/^CONFIG_TARGET_ROOTFS_PARTSIZE/d' .config && \
 		if [ "$(TARGET_ARCH)" = "x86" ]; then \
 			echo "CONFIG_TARGET_x86=y" >> .config; \
 			echo "CONFIG_TARGET_x86_$(TARGET_SUBARCH)=y" >> .config; \
@@ -113,6 +114,11 @@ config: feeds
 			echo "CONFIG_TARGET_SUBTARGET=\"$(TARGET_SUBARCH)\"" >> .config; \
 			echo "CONFIG_TARGET_PROFILE=\"Generic\"" >> .config; \
 		fi
+	@echo "$(COLOR_GREEN)从配置文件恢复 ROOTFS_PARTSIZE 设置...$(COLOR_RESET)"
+	@cd $(BUILD_DIR) && \
+		if grep -q "^CONFIG_TARGET_ROOTFS_PARTSIZE=" $(CURDIR)/$(CONFIG_FILE); then \
+			grep "^CONFIG_TARGET_ROOTFS_PARTSIZE=" $(CURDIR)/$(CONFIG_FILE) >> .config; \
+		fi
 	@cd $(BUILD_DIR) && FORCE_UNSAFE_CONFIGURE=1 make defconfig
 
 menuconfig: feeds
@@ -128,7 +134,12 @@ build: config
 clean:
 	@echo "$(COLOR_YELLOW)清理构建文件...$(COLOR_RESET)"
 	@if [ -d "$(BUILD_DIR)" ]; then \
-		cd $(BUILD_DIR) && FORCE_UNSAFE_CONFIGURE=1 make clean; \
+		cd $(BUILD_DIR) && \
+		if [ ! -f .config ]; then \
+			touch .config && echo "CONFIG_HAVE_DOT_CONFIG=y" >> .config; \
+		fi && \
+		FORCE_UNSAFE_CONFIGURE=1 make clean; \
+		rm -f .config; \
 	fi
 
 distclean:

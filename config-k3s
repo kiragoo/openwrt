@@ -48,9 +48,10 @@ CONFIG_PACKAGE_ip-bridge=y
 CONFIG_PACKAGE_ip-full=y
 CONFIG_PACKAGE_ipset=y
 
-# iptables Modules
+# iptables - Base Package and Modules
 CONFIG_IPTABLES_CONNLABEL=y
 CONFIG_IPTABLES_NFTABLES=y
+CONFIG_PACKAGE_iptables-nft=y
 CONFIG_PACKAGE_iptables-mod-conntrack-extra=y
 CONFIG_PACKAGE_iptables-mod-extra=y
 CONFIG_PACKAGE_iptables-mod-ipopt=y
@@ -105,8 +106,19 @@ CONFIG_PACKAGE_libnfnetlink=y
 CONFIG_PACKAGE_libnftnl=y
 CONFIG_PACKAGE_kmod-lib-crc32c=y
 
+# System Certificates
+CONFIG_PACKAGE_ca-certificates=y
+
+# Container Runtime
+CONFIG_PACKAGE_containerd=y
+
 # Storage Configuration
-CONFIG_TARGET_ROOTFS_PARTSIZE=2048
+# Root filesystem partition size (in MiB)
+# Set to 1024MB (1GB) - sufficient for containerd and packages
+# Current rootfs content: ~182MB, leaving ~800MB for runtime data and growth
+# Note: Too large values (e.g., 4096MB) cause "No space left on device" during build
+#       as build process needs to create temporary files of this size
+CONFIG_TARGET_ROOTFS_PARTSIZE=1024
 
 # Disable unnecessary packages
 # CONFIG_PACKAGE_kmod-ppp is not set
