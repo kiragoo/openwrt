@@ -84,6 +84,22 @@ config: feeds
 		exit 1; \
 	fi
 	cp $(CONFIG_FILE) $(BUILD_DIR)/.config
+	@echo "$(COLOR_GREEN)集成 user-ns-pkgs 中的 ipk 包到镜像...$(COLOR_RESET)"
+	@if [ -d "user-ns-pkgs" ] && [ -n "$$(ls -A user-ns-pkgs/*.ipk 2>/dev/null)" ]; then \
+		mkdir -p $(BUILD_DIR)/files/usr/lib/opkg/packages; \
+		cp user-ns-pkgs/*.ipk $(BUILD_DIR)/files/usr/lib/opkg/packages/; \
+		echo "$(COLOR_GREEN)已复制 $$(ls -1 user-ns-pkgs/*.ipk 2>/dev/null | wc -l) 个 ipk 包到镜像$(COLOR_RESET)"; \
+	else \
+		echo "$(COLOR_YELLOW)警告: user-ns-pkgs 目录不存在或为空，跳过 ipk 集成$(COLOR_RESET)"; \
+	fi
+	@echo "$(COLOR_GREEN)创建首次启动安装脚本...$(COLOR_RESET)"
+	@mkdir -p $(BUILD_DIR)/files/etc/uci-defaults
+	@if [ -f scripts/install-user-packages.sh ]; then \
+		cp scripts/install-user-packages.sh $(BUILD_DIR)/files/etc/uci-defaults/99_install_user_packages; \
+		chmod +x $(BUILD_DIR)/files/etc/uci-defaults/99_install_user_packages; \
+	else \
+		echo "$(COLOR_YELLOW)警告: scripts/install-user-packages.sh 不存在，跳过安装脚本创建$(COLOR_RESET)"; \
+	fi
 	@echo "$(COLOR_GREEN)编译配置工具并设置目标架构: $(TARGET_ARCH)/$(TARGET_SUBARCH)$(COLOR_RESET)"
 	@cd $(BUILD_DIR) && FORCE_UNSAFE_CONFIGURE=1 make defconfig 2>/dev/null || true
 	@cd $(BUILD_DIR) && \

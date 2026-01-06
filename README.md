@@ -124,6 +124,47 @@ CONFIG_KERNEL_LXC_MISC=y                   # LXC 容器支持
 - Keys：支持容器镜像签名验证
 - POSIX MQueue：容器间通信
 
+#### 4. USB 支持
+
+USB 支持使系统能够识别和使用 USB 设备，包括 USB 存储设备、USB HID 设备（键盘、鼠标）等。
+
+```
+CONFIG_KERNEL_USB_SUPPORT=y                  # USB 基础支持
+CONFIG_KERNEL_USB=y                          # USB 核心功能
+CONFIG_KERNEL_USB_COMMON=y                   # USB 通用功能
+CONFIG_KERNEL_USB_PCI=y                      # USB PCI 支持
+CONFIG_KERNEL_USB_EHCI_HCD=y                 # USB 2.0 高速控制器（EHCI）
+CONFIG_KERNEL_USB_EHCI_PCI=y                 # PCI EHCI 控制器
+CONFIG_KERNEL_USB_OHCI_HCD=y                 # USB 1.1 全速控制器（OHCI）
+CONFIG_KERNEL_USB_OHCI_HCD_PCI=y             # PCI OHCI 控制器
+CONFIG_KERNEL_USB_UHCI_HCD=y                 # USB 1.1 全速控制器（UHCI，主要用于 x86）
+CONFIG_KERNEL_USB_XHCI_HCD=y                 # USB 3.0 超高速控制器（xHCI）
+CONFIG_KERNEL_USB_XHCI_PCI=y                 # PCI xHCI 控制器
+CONFIG_KERNEL_USB_STORAGE=y                  # USB 存储设备支持
+CONFIG_KERNEL_USB_HID=y                      # USB HID 设备支持
+CONFIG_KERNEL_USB_HIDDEV=y                   # USB HID 设备节点支持
+```
+
+**USB 内核模块**：
+```
+CONFIG_PACKAGE_kmod-usb-core=y               # USB 核心模块
+CONFIG_PACKAGE_kmod-usb-ohci=y               # OHCI 控制器模块
+CONFIG_PACKAGE_kmod-usb-ohci-pci=y           # PCI OHCI 控制器模块
+CONFIG_PACKAGE_kmod-usb-uhci=y               # UHCI 控制器模块
+CONFIG_PACKAGE_kmod-usb-ehci=y               # EHCI 控制器模块
+CONFIG_PACKAGE_kmod-usb-ehci-pci=y           # PCI EHCI 控制器模块
+CONFIG_PACKAGE_kmod-usb-xhci-hcd=y           # xHCI 控制器模块
+CONFIG_PACKAGE_kmod-scsi-core=y              # SCSI 核心模块（USB 存储需要）
+CONFIG_PACKAGE_kmod-usb-storage=y            # USB 存储设备模块
+CONFIG_PACKAGE_kmod-usb-hid=y                # USB HID 设备模块
+```
+
+**用途**：
+- 支持 USB 1.1、2.0 和 3.0 设备
+- 识别和使用 USB 存储设备（U盘、移动硬盘）
+- 支持 USB HID 设备（键盘、鼠标等输入设备）
+- 在虚拟化环境中使用 USB 直通功能
+
 ### 网络组件
 
 #### 1. 基础网络工具
@@ -232,15 +273,48 @@ CONFIG_PACKAGE_libmnl=y                    # Netlink 库
 CONFIG_PACKAGE_libnetfilter-conntrack=y    # 连接跟踪库
 CONFIG_PACKAGE_libnfnetlink=y              # Netfilter netlink 库
 CONFIG_PACKAGE_libnftnl=y                  # nftables 库
+CONFIG_PACKAGE_kmod-lib-crc32c=y           # CRC32C 库模块
+```
+
+### 磁盘工具
+
+fdisk 是用于管理磁盘分区的命令行工具，在系统管理和存储配置中非常有用。
+
+```
+CONFIG_PACKAGE_libuuid=y                   # UUID 库
+CONFIG_PACKAGE_libblkid=y                  # 块设备 ID 库
+CONFIG_PACKAGE_libfdisk=y                  # 分区操作库
+CONFIG_PACKAGE_libsmartcols=y              # 表格格式化库
+CONFIG_PACKAGE_libncursesw=y               # 宽字符 ncurses 库（交互式界面）
+CONFIG_PACKAGE_fdisk=y                     # fdisk 分区工具
+```
+
+**用途**：
+- 创建、删除和修改磁盘分区
+- 查看磁盘分区表信息
+- 管理持久化存储卷（用于容器数据持久化）
+- 系统维护和故障排除
+
+**使用示例**：
+```bash
+# 查看磁盘分区
+fdisk -l
+
+# 交互式分区管理
+fdisk /dev/sda
 ```
 
 ### 存储配置
 
 ```
-CONFIG_TARGET_ROOTFS_PARTSIZE=2048         # 根文件系统分区大小：2GB
+CONFIG_TARGET_ROOTFS_PARTSIZE=1024         # 根文件系统分区大小：1GB
 ```
 
-**说明**：K3s 和容器镜像需要足够的存储空间，建议至少 2GB。
+**说明**：
+- 当前配置设置为 1GB，足够 containerd 和基础包使用
+- 当前 rootfs 内容约 182MB，剩余约 800MB 用于运行时数据和增长
+- 注意：过大的值（如 4096MB）可能导致编译时出现 "No space left on device" 错误，因为构建过程需要创建相应大小的临时文件
+- 如果需要存储大量容器镜像，可以适当增加此值
 
 ## Makefile 使用
 
@@ -385,6 +459,15 @@ lsmod | grep -E "veth|vxlan|br_netfilter"
 
 # 检查 OverlayFS
 cat /proc/filesystems | grep overlay
+
+# 检查 USB 设备
+lsusb
+
+# 检查 USB 存储设备
+lsblk | grep -i usb
+
+# 检查 fdisk 命令
+fdisk -l
 ```
 
 ## 故障排除
@@ -594,4 +677,7 @@ k3s kubectl get pods -A
 
 ## 更新日志
 
-- **2024-12**: 初始版本，支持 K3s 1.30.11 和 OpenWrt 24.10.0
+- **2024-12**: 
+  - 初始版本，支持 K3s 1.30.11 和 OpenWrt 24.10.0
+  - 添加 USB 支持（USB 1.1/2.0/3.0 控制器、USB 存储、USB HID）
+  - 添加 fdisk 磁盘分区工具及其依赖库
